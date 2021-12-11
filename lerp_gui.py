@@ -19,7 +19,7 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
         timer.timeout.connect(self.gl.updateGL)
         timer.start()
 
-        self.pushButton_4.clicked.connect(self.show_ted)
+        self.lerpButton.clicked.connect(self.show_ted)
     
     def show_ted(self):
         mesh = om.read_trimesh('data/raw_meshes/ted.obj')
