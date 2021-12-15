@@ -66,16 +66,16 @@ class QGLControllerWidget(QtOpenGL.QGLWidget):
 
     def set_mesh(self, mesh):
         self.mesh = mesh
-        self.mesh.update_normals()
-        assert(self.mesh.n_vertices() > 0 and self.mesh.n_faces() > 0)
+        # self.mesh.update_normals()
+        # assert(self.mesh.n_vertices() > 0 and self.mesh.n_faces() > 0)
         index_buffer = self.ctx.buffer(
-            np.array(self.mesh.face_vertex_indices(), dtype="u4").tobytes())
+            np.array(self.mesh.faces.flatten(), dtype="u4").tobytes())
         vao_content = [
             (self.ctx.buffer(
-                np.array(self.mesh.points(), dtype="f4").tobytes()),
+                np.array(self.mesh.vertices, dtype="f4").tobytes()),
                 '3f', 'in_position'),
             (self.ctx.buffer(
-                np.array(self.mesh.vertex_normals(), dtype="f4").tobytes()),
+                np.array(self.mesh.vertex_normals, dtype="f4").tobytes()),
                 '3f', 'in_normal')
         ]
         self.vao = self.ctx.vertex_array(
@@ -85,11 +85,12 @@ class QGLControllerWidget(QtOpenGL.QGLWidget):
 
     def init_arcball(self):
         self.arc_ball = ArcBallUtil(self.width(), self.height())
-        pts = self.mesh.points()
+        pts = self.mesh.vertices
         bbmin = np.min(pts, axis=0)
         bbmax = np.max(pts, axis=0)
-        self.center = 0.5*(bbmax+bbmin)
-        self.scale = np.linalg.norm(bbmax-self.center)
+        self.center = 0.5*(bbmax+bbmin) - 0.5*(bbmax+bbmin)
+        self.scale = np.linalg.norm(bbmax-self.center) / np.linalg.norm(bbmax-self.center) * 2
+        # self.center = 0
         self.arc_ball.Transform[:3, :3] /= self.scale
         self.arc_ball.Transform[3, :3] = -self.center/self.scale
 

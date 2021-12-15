@@ -1,10 +1,14 @@
 import sys
 
+import numpy as np
 import openmesh as om
+import trimesh
 from PyQt5 import QtCore, QtWidgets
 
 from gui.gui import Ui_DeepSDFLerpGUI
 from gui.mgl_qt_meshviewer import QGLControllerWidget
+
+import utils
 
 class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
     def __init__(self, parent=None):
@@ -22,7 +26,11 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
         self.lerpButton.clicked.connect(self.show_ted)
     
     def show_ted(self):
-        mesh = om.read_trimesh('data/raw_meshes/ted.obj')
+        # mesh = om.read_trimesh('data/raw_meshes/ted.obj')
+        
+
+        mesh = trimesh.util.concatenate([mesh, samples_mesh])
+
         self.gl.set_mesh(mesh)
         
 
