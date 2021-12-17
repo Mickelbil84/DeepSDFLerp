@@ -34,7 +34,7 @@ class DeepSDFDataset(Dataset):
     def __init__(self):
         with open(os.path.join(THINGI10K_OUT_DIR, 'latent.pkl'), 'rb') as fp:
             self.latent_dict = pickle.load(fp)
-        self.meshes = [m for m in os.listdir(THINGI10K_OUT_DIR) if '.pkl' not in m][:100]
+        self.meshes = [m for m in os.listdir(THINGI10K_OUT_DIR) if '.pkl' not in m][:1000]
         self.meshes_df = {}
         print("fetching all meshes to RAM. Warning: very expensive")
         def loop(mesh_name):

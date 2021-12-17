@@ -8,6 +8,7 @@ __pycache__/
 
 # Huge data dir
 data/
+checkpoints/
 
 # Distribution / packaging
 .Python

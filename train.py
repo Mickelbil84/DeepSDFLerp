@@ -10,6 +10,7 @@ import data
 import model
 
 NUM_EPOCHS = 10
+DELTA = 0.1
 
 # Init Visdom
 vis = None 
@@ -31,7 +32,7 @@ def train(train_loader, model, criterion, optimizer, epoch, train_losses):
         # Perform a learning step
         model.zero_grad()
         output = model(xyz, latent)
-        loss = criterion(output, sdf)
+        loss = criterion(torch.clamp(output, -DELTA, DELTA), torch.clamp(sdf, -DELTA, DELTA))
         loss.backward()
         optimizer.step()
 
