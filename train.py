@@ -21,9 +21,9 @@ if __name__ == "__main__":
 
     for epoch in range(1):
         for i, data in tqdm.tqdm(enumerate(train_loader)):
-            xyz = data['xyz'].float().cuda()
-            latent = data['latent'].float().cuda()
-            sdf = torch.from_numpy(np.array([sdf_labels[i]])).float().cuda()
+            xyz = data['xyz'].cuda()
+            latent = data['latent'].cuda()
+            sdf = data['sdf'].cuda()
 
             optimizer.zero_grad()
 

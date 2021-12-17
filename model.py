@@ -14,12 +14,12 @@ class DeepSDF(nn.Module):
         self.fc8 = nn.Linear(512, 1)
 
     def forward(self, xyz, latent):
-        input = torch.cat((xyz, latent))
+        input = torch.cat((xyz, latent), dim=1)
         x = torch.relu(self.fc1(input))
         x = torch.relu(self.fc2(x))
         x = torch.relu(self.fc3(x))
         x = torch.relu(self.fc4(x))
-        x = torch.cat((x, input))
+        x = torch.cat((x, input), dim=1)
         x = torch.relu(self.fc5(x))
         x = torch.relu(self.fc6(x))
         x = torch.relu(self.fc7(x))

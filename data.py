@@ -7,6 +7,7 @@ import torch
 import trimesh
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
 from torch.utils.data import Dataset
 
 import utils
@@ -33,11 +34,18 @@ class DeepSDFDataset(Dataset):
     def __init__(self):
         with open(os.path.join(THINGI10K_OUT_DIR, 'latent.pkl'), 'rb') as fp:
             self.latent_dict = pickle.load(fp)
-        self.meshes = [m.split('.')[0] + '.xlsx' for m in self.latent_dict.keys()]
+        self.meshes = [m for m in os.listdir(THINGI10K_OUT_DIR) if '.pkl' not in m][:100]
+        self.meshes_df = {}
+        print("fetching all meshes to RAM. Warning: very expensive")
+        def loop(mesh_name):
+            return mesh_name, pd.read_excel(os.path.join(THINGI10K_OUT_DIR, mesh_name))
+        pairs = Parallel(n_jobs=-1, verbose=10)(delayed(loop)(mesh_name) for mesh_name in self.meshes)
+        for mesh_name, df in pairs:
+            self.meshes_df[mesh_name] = df
 
 
     def __len__(self):
-        return len(self.latent_dict * NUM_SAMPLES)
+        return len(self.meshes) * NUM_SAMPLES
 
 
     def __getitem__(self, idx):
@@ -47,18 +55,17 @@ class DeepSDFDataset(Dataset):
         mesh_idx = idx // NUM_SAMPLES
         sample_idx = idx % NUM_SAMPLES
 
-
         # Process and load samples
-        samples_df = pd.read_excel(os.path.join(THINGI10K_OUT_DIR, self.meshes[mesh_idx]))
+        samples_df = self.meshes_df[self.meshes[mesh_idx]]
         x = samples_df['x'][sample_idx]
         y = samples_df['y'][sample_idx]
         z = samples_df['z'][sample_idx]
         sdf = samples_df['sdf'][sample_idx]
  
         sample = {
-            'xyz': torch.from_numpy(np.array([x,y,z])),
-            'sdf': torch.from_numpy(np.array([sdf])),
-            'latent': torch.from_numpy(self.latent_dict[self.meshes[mesh_idx]])
+            'xyz': torch.from_numpy(np.array([x,y,z])).float(),
+            'sdf': torch.from_numpy(np.array([sdf])).float(),
+            'latent': torch.from_numpy(self.latent_dict[self.meshes[mesh_idx].split('.')[0] + '.stl']).float()
         }
         
         return sample
