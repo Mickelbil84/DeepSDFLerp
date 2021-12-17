@@ -54,7 +54,7 @@ def main():
     # Load train data
     ###################
     train_dataset = data.DeepSDFDataset()
-    train_loader = DataLoader(train_dataset, batch_size=128, num_workers=4, pin_memory=True, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=1024, num_workers=4, pin_memory=True, shuffle=True)
 
     ###############################
     # Prepare model and optimizers

@@ -42,7 +42,7 @@ class DeepSDFDataset(Dataset):
         self.latent_dict = tmp_latent
 
         # Read all the actual meshes that we sampled to RAM
-        self.meshes = [m for m in os.listdir(THINGI10K_OUT_DIR) if '.pkl' not in m][:10]
+        self.meshes = [m for m in os.listdir(THINGI10K_OUT_DIR) if '.pkl' not in m][:1000]
         self.meshes_df = {}
         print("fetching all meshes to RAM. Warning: very expensive")
         def loop(mesh_name):
