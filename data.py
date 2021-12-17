@@ -3,9 +3,11 @@ import pickle
 import multiprocessing
 
 import tqdm
+import torch
 import trimesh
 import numpy as np
 import pandas as pd
+from torch.utils.data import Dataset
 
 import utils
 
@@ -18,16 +20,58 @@ NORMAL_MU = 0
 NORMAL_SIGMA = 0.7
 LATENT_MU = 0
 LATENT_SIGMA = 0.01
-
+MAX_FACE_COUNT = 26000
 NUM_THREADS = 10
+
+THINGI10K_IN_DIR = 'data/Thingi10K/raw_meshes'
+THINGI10K_OUT_DIR = 'data/sampled_sdf/Thingi10K'
+
+class DeepSDFDataset(Dataset):
+    """
+    Loads for every mesh its sampels and latent vector
+    """
+    def __init__(self):
+        with open(os.path.join(THINGI10K_OUT_DIR, 'latent.pkl'), 'rb') as fp:
+            self.latent_dict = pickle.load(fp)
+        self.meshes = [m.split('.')[0] + '.xlsx' for m in self.latent_dict.keys()]
+
+
+    def __len__(self):
+        return len(self.latent_dict * NUM_SAMPLES)
+
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        
+        mesh_idx = idx // NUM_SAMPLES
+        sample_idx = idx % NUM_SAMPLES
+
+
+        # Process and load samples
+        samples_df = pd.read_excel(os.path.join(THINGI10K_OUT_DIR, self.meshes[mesh_idx]))
+        x = samples_df['x'][sample_idx]
+        y = samples_df['y'][sample_idx]
+        z = samples_df['z'][sample_idx]
+        sdf = samples_df['sdf'][sample_idx]
+ 
+        sample = {
+            'xyz': torch.from_numpy(np.array([x,y,z])),
+            'sdf': torch.from_numpy(np.array([sdf])),
+            'latent': torch.from_numpy(self.latent_dict[self.meshes[mesh_idx]])
+        }
+        
+        return sample
 
 def generate_samples_for_mesh(mesh_path, num_samples=NUM_SAMPLES, alpha=ALPHA, 
     boundary_mu=BOUNDARY_MU, boundary_sigma=BOUNDARY_SIGMA, 
-    normal_mu=NORMAL_MU, normal_sigma=NORMAL_SIGMA,
-    latent_dim=LATENT_DIM, latent_mu=LATENT_MU, latent_sigma=LATENT_SIGMA):
+    normal_mu=NORMAL_MU, normal_sigma=NORMAL_SIGMA):
     # Load the mesh and normalize it
     mesh = trimesh.load(mesh_path)
     utils.normalize_mesh(mesh)
+
+    if len(mesh.faces) > MAX_FACE_COUNT:
+        return None
 
     # Sample points near the mesh and in normal distribution
     num_mesh_samples = int(alpha * num_samples)
@@ -50,27 +94,43 @@ def generate_samples_for_mesh(mesh_path, num_samples=NUM_SAMPLES, alpha=ALPHA,
     })
 
     # Return the samples dataframe and the random latent vector
-    return df, np.random.normal(latent_mu, latent_sigma, latent_dim)
+    return df
 
 
 def process_mesh(in_dir, out_dir, mesh_name):
-    print(mesh_name)
     mesh_name_pre, _ = mesh_name.split('.')
-    df, latent_z = generate_samples_for_mesh(os.path.join(in_dir, mesh_name))
-    df.to_excel(os.path.join(out_dir, mesh_name_pre + '.xlsx'))
-    # with open(os.path.join(out_dir, mesh_name_pre + '_z.pkl')) as fp:
-    #     pickle.dump(latent_z, fp)
+    if os.path.isfile(os.path.join(out_dir, mesh_name_pre + '.xlsx')):
+        return
+    try:
+        df =  generate_samples_for_mesh(os.path.join(in_dir, mesh_name))
+    except:
+        return
+    
+    if df is not None:
+        df.to_excel(os.path.join(out_dir, mesh_name_pre + '.xlsx'))
 
-def process_mesh_wrap(args):
-    in_dir, out_dir, mesh_name = args
-    process_mesh(in_dir, out_dir, mesh_name)
+
+def create_latent_space_dict(in_dir, latent_dim=LATENT_DIM, latent_mu=LATENT_MU, latent_sigma=LATENT_SIGMA):
+    meshes = os.listdir(in_dir)
+    d = {}
+    for mesh_name in meshes:
+        z = np.random.normal(latent_mu, latent_sigma, latent_dim)
+        d[mesh_name] = z
+    return d
+
 
 if __name__ == "__main__":
+    """
+    The main function actually prepares the training data, from stl
+    to excel with SDF samples + latent vector mapping
+    """
     in_dir = 'data/Thingi10K/raw_meshes'
     out_dir = 'data/sampled_sdf/Thingi10K'
     meshes = os.listdir(in_dir)
 
     for mesh_name in tqdm.tqdm(meshes):
         process_mesh(in_dir, out_dir, mesh_name)
-    # with multiprocessing.Pool(NUM_THREADS) as pool:
-    #     pool.map(process_mesh_wrap, zip([in_dir] * len(meshes), [out_dir] * len(meshes), meshes))
+
+    latent_dict = create_latent_space_dict(in_dir)
+    with open(os.path.join(out_dir, 'latent.pkl'), 'wb') as fp:
+        pickle.dump(latent_dict, fp)
