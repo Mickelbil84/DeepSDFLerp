@@ -9,8 +9,8 @@ from torch.utils.data import DataLoader
 import data
 import model
 
-NUM_EPOCHS = 10
-DELTA = 0.1
+NUM_EPOCHS = 100
+DELTA = 0.05
 
 # Init Visdom
 vis = None 
