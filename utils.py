@@ -1,3 +1,5 @@
+import math
+
 import tqdm
 import torch
 import mcubes
@@ -21,7 +23,7 @@ def deepsdf_to_mesh(deepsdf, latent_z, eps, device, out_collada_path=None):
         device (float): pytorch device (CPU or GPU) to run computations
         out_collada_path (str, optional): write the collada file from mcubes
     """
-    n = int(2.0 / eps) # number of samples in each axis
+    n = math.ceil(int(2.0 / eps)) # number of samples in each axis
     grid = np.zeros((n, n, n))
     
     # Transform the latent to a batch of duplicated latents

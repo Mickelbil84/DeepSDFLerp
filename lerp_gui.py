@@ -40,7 +40,7 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
         
         # Load points from sampled file
         model = DeepSDF().to(device)
-        model.load_state_dict(torch.load('checkpoints/checkpoint_e56.pth'))
+        model.load_state_dict(torch.load('checkpoints/checkpoint_e42.pth'))
         
         # Load latent_dict and mesh list to test stuff
         with open(os.path.join(THINGI10K_OUT_DIR, 'latent.pkl'), 'rb') as fp:
@@ -54,15 +54,15 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
 
         # Access latent either via index in the mesh list
         # or directly with the mesh name string
-        mesh_idx = 100
+        mesh_idx = 531
         mesh_str = '101620'
-        latent_from_idx = False
+        latent_from_idx = True
 
         # If we choose mesh_idx, then for comparsion with ground truth
         # print the actual mesh name
         print(meshes[mesh_idx])
 
-        eps = 0.05
+        eps = 0.01
 
         # Fetch latent vector
         if latent_from_idx:

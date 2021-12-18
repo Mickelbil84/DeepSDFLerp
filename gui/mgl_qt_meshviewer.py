@@ -88,8 +88,8 @@ class QGLControllerWidget(QtOpenGL.QGLWidget):
         pts = self.mesh.vertices
         bbmin = np.min(pts, axis=0)
         bbmax = np.max(pts, axis=0)
-        self.center = 0.5*(bbmax+bbmin) - 0.5*(bbmax+bbmin)
-        self.scale = np.linalg.norm(bbmax-self.center) / np.linalg.norm(bbmax-self.center) * 1.2
+        self.center = 0.5*(bbmax+bbmin)
+        self.scale = np.linalg.norm(bbmax-self.center)
         # self.center = 0
         self.arc_ball.Transform[:3, :3] /= self.scale
         self.arc_ball.Transform[3, :3] = -self.center/self.scale
