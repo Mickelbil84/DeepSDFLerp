@@ -4,7 +4,7 @@ import mcubes
 import trimesh
 import numpy as np
 
-from data import LATENT_DIM
+from constants import *
 
 
 def deepsdf_to_mesh(deepsdf, latent_z, eps, device, out_collada_path=None):

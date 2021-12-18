@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 import data
 import model
 
-NUM_EPOCHS = 100
+NUM_EPOCHS = 200
 DELTA = 0.05
 
 # Init Visdom
