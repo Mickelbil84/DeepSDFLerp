@@ -1,0 +1,40 @@
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <asset>
+    <created>2021-12-22T21:20:45.565002</created>
+    <modified>2021-12-22T21:20:45.565002</modified>
+    <up_axis>Y_UP</up_axis>
+  </asset>
+  <library_geometries>
+    <geometry id="geometry0" name="mcubes_mesh">
+      <mesh>
+        <source id="verts-array">
+          <float_array count="0" id="verts-array-array"></float_array>
+          <technique_common>
+            <accessor count="0" source="#verts-array-array" stride="3">
+              <param type="float" name="X"/>
+              <param type="float" name="Y"/>
+              <param type="float" name="Z"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="verts-array-vertices">
+          <input semantic="POSITION" source="#verts-array"/>
+        </vertices>
+        <triangles count="0" material="">
+          <input offset="0" semantic="VERTEX" source="#verts-array-vertices"/>
+          <p></p>
+        </triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_visual_scenes>
+    <visual_scene id="mcubes_scene">
+      <node id="mcubes_mesh" name="mcubes_mesh">
+        <instance_geometry url="#geometry0"/>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#mcubes_scene"/>
+  </scene>
+</COLLADA>

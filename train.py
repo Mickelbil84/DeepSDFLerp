@@ -40,13 +40,13 @@ def train(train_loader, model, criterion, optimizer, epoch, train_losses):
         total_loss += loss.item()
         cnt += 1
         if i % 1000 == 0:
-            train_enum.set_description('Train (loss %.4f) epoch %d' % (loss.item(), epoch))
+            train_enum.set_description('Train (loss %.8f) epoch %d' % (loss.item(), epoch))
             train_losses.append(loss.item())
             vis.line(Y=np.asarray(train_losses), X=torch.arange(1, 1+len(train_losses)),
                 opts={'title': 'Loss'}, name='loss', win='loss')
     
     # Print summary of epoch
-    print('=====> Train set loss: {:.4f}\t Epoch: {}'.format(total_loss / cnt, epoch))
+    print('=====> Train set loss: {:.8f}\t Epoch: {}'.format(total_loss / cnt, epoch))
 
 
 def main():
