@@ -15,7 +15,11 @@ class QGLControllerWidget(QtOpenGL.QGLWidget):
 
     def __init__(self, parent=None):
         self.parent = parent
-        super(QGLControllerWidget, self).__init__(parent)
+        fmt = QtOpenGL.QGLFormat()
+        fmt.setVersion(3, 3)
+        fmt.setProfile(QtOpenGL.QGLFormat.CoreProfile)
+        fmt.setSampleBuffers(True)
+        super(QGLControllerWidget, self).__init__(fmt, parent)
 
     def initializeGL(self):
         self.ctx = moderngl.create_context()
