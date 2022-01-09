@@ -17,6 +17,8 @@ vis = None
 if __name__ == "__main__":
     vis = visdom.Visdom(env='deepsdf')
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def train(train_loader, model, criterion, optimizer, epoch, train_losses):
     total_loss = 0
@@ -25,9 +27,9 @@ def train(train_loader, model, criterion, optimizer, epoch, train_losses):
 
     for i, data in train_enum:
         # Get xyz,latent as input and sdf and label
-        xyz = data['xyz'].cuda()
-        latent = data['latent'].cuda()
-        sdf = data['sdf'].cuda()
+        xyz = data['xyz'].to(device)
+        latent = data['latent'].to(device)
+        sdf = data['sdf'].to(device)
 
         # Perform a learning step
         model.zero_grad()
@@ -59,7 +61,7 @@ def main():
     ###############################
     # Prepare model and optimizers
     ###############################
-    deepsdf = model.DeepSDF().cuda()
+    deepsdf = model.DeepSDF().to(device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(deepsdf.parameters())
 
