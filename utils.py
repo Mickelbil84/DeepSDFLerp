@@ -1,3 +1,4 @@
+from functools import total_ordering
 import math
 
 import tqdm
@@ -14,6 +15,10 @@ import pickle
 import os
 import data
 import utils
+import pandas as pd
+from torch.utils.data import DataLoader
+import train
+
 
 from constants import *
 
@@ -137,21 +142,18 @@ def mesh_to_deepSDF(out_collada_path=None):
     8. Compute loss and backprop to change the latent vector.
     """
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    latent = np.random.normal(LATENT_MU, LATENT_SIGMA, LATENT_DIM)
-    latent = torch.from_numpy(latent).float().to(device)
-    # Init the nn and load weights
+    # Randomize a latent vector z
+    latent_z = np.random.normal(LATENT_MU, LATENT_SIGMA, LATENT_DIM)
+    latent_z = torch.from_numpy(latent_z).float().to(device)
+    # Init the Neural Network and load the weights
     deepsdf = model.DeepSDF().to(device)
     deepsdf.load_state_dict(torch.load('resources/trained_models/checkpoint_d0.05_e199_l2.pth', map_location=device))
     # Freeze all weights
     for param in deepsdf.parameters():
-        param.requires_grad = False
-    # Unfreeze the input
-    latent.requires_grad = True
-    # Some config:
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(deepsdf.parameters())
+        param.requires_grad_(False)
+
     # Load mesh:
-            # Load latent_dict and mesh list to test stuff
+    # Load latent_dict and mesh list to test stuff
     with open(os.path.join(THINGI10K_OUT_DIR, 'latent.pkl'), 'rb') as fp:
         latent_dict = pickle.load(fp)
     tmp_latent = {}
@@ -165,8 +167,102 @@ def mesh_to_deepSDF(out_collada_path=None):
     mesh_str = random.choice(list(latents_dict_keys))
     latent_raw = latent_dict[mesh_str]
     eps = 0.05
-    mesh = utils.deepsdf_to_mesh(model, latent_raw, eps, device, 'misc/test3.dae')
+    mesh = utils.deepsdf_to_mesh(deepsdf, latent_raw, eps, device)
+    samples_df = generate_samples_for_mesh(mesh, num_samples=10000)
+    # samples_sdf = sample_random_points_near_mesh["sdf"].to(device)
     
+    xyz = torch.from_numpy(np.array([samples_df['x'],samples_df['y'],samples_df['z']])).float()
+    sdf = torch.from_numpy(np.array([samples_df['sdf']])).float()
+    # latent_z = torch.from_numpy(latent_z).float()
+    xyz.to(device)
+    sdf.to(device)
+    latent_z.to(device)
+    # latent_z.requires_grad = True
+
+    criterion = nn.MSELoss()
+    # optimizer = optim.Adam(deepsdf.parameters())
+
+    for epoch in range(30):
+        total_loss = 0
+        cnt = 0
+        deepsdf.zero_grad()
+
+        n = math.ceil(int(2.0 / eps)) # number of samples in each axis
+        grid = np.zeros((n, n, n))
+        
+        # Transform the latent to a batch of duplicated latents
+        latent = np.zeros((n, LATENT_DIM))
+        for i in range(n):
+            latent[i, :] = latent_z
+        latent = torch.from_numpy(latent).float().to(device)
+        latent.requires_grad_(True)
+        optimizer = optim.Adam([latent], lr=1e-3)
+
+
+        # Traverse the volume and compute the SDF
+        for i, x in tqdm.tqdm(enumerate(np.arange(-1.0, 1.0, eps)), total=n):
+            for j, y in enumerate(np.arange(-1.0, 1.0, eps)):
+                # To make things more quick, combine all tested z-values
+                # to a single batch to run on the (preferably) GPU
+                # (this speeds up computation considerably)
+                batch = np.zeros((n, 3))
+                for k, z in enumerate(np.arange(-1.0, 1.0, eps)):
+                    batch[k, 0] = x
+                    batch[k, 1] = y
+                    batch[k, 2] = z
+                xyz = torch.from_numpy(batch).float().to(device)
+                output = deepsdf(xyz, latent)
+                loss = criterion(torch.clamp(output, -0.05, 0.05), torch.clamp(sdf, -0.05, 0.05))
+
+                # Perform a learning step
+                loss.backward()
+                optimizer.step()
+
+                # Update losses and visualize
+                total_loss += loss.item()
+                cnt += 1
+        
+        print('=====> Train set loss: {:.8f}\t Epoch: {}'.format(total_loss / cnt, epoch))
+
+    
+    
+    print("Done")
+
+
+
+
+def generate_samples_for_mesh(mesh, num_samples=NUM_SAMPLES, alpha=ALPHA, 
+    boundary_mu=BOUNDARY_MU, boundary_sigma=BOUNDARY_SIGMA, 
+    normal_mu=NORMAL_MU, normal_sigma=NORMAL_SIGMA):
+    # Load the mesh and normalize it
+    # mesh = trimesh.load(mesh_path)
+    utils.normalize_mesh(mesh)
+
+    if len(mesh.faces) > MAX_FACE_COUNT:
+        return None
+
+    # Sample points near the mesh and in normal distribution
+    num_mesh_samples = int(alpha * num_samples)
+    samples_near_mesh = utils.sample_random_points_near_mesh(
+        mesh, num_mesh_samples, mu=boundary_mu, sigma=boundary_sigma)
+    samples_normal = utils.sample_random_points(
+        num_samples - num_mesh_samples, mu=normal_mu, sigma=normal_sigma)
+    samples = np.concatenate([samples_near_mesh, samples_normal])
+
+    # Compute SDF
+    pq = trimesh.proximity.ProximityQuery(mesh)
+    sdf = pq.signed_distance(samples)
+    
+    # Generate pandas dataframe
+    df = pd.DataFrame({
+        'x': samples[:, 0],
+        'y': samples[:, 1],
+        'z': samples[:, 2],
+        'sdf': sdf
+    })
+
+    # Return the samples dataframe and the random latent vector
+    return df
 
 def main():
     mesh_to_deepSDF()
