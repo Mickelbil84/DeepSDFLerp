@@ -114,7 +114,7 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
             # self.alpha = round(float(self.alpha + self.step_size),1)
             self.alpha = ii / self.nm_of_steps
             latent_raw_to_dict = self.alpha*latent_raw + (1-self.alpha)*latent_raw2
-            mesh = utils.deepsdf_to_mesh(model, latent_raw_to_dict, eps, device, 'misc/test3.dae')
+            mesh = utils.deepsdf_to_mesh(model, latent_raw_to_dict, eps, device)# 'misc/test3.dae')
             self.interpolated_dict[ii] = mesh
 
         # if interpulated:
@@ -126,8 +126,8 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
         # latent_raw3 = self.alpha*latent_raw + (1-self.alpha)*latent_raw2
 
         # Compute the mesh from SDF and output to screen
-        mesh = utils.deepsdf_to_mesh(model, latent_raw, eps, device, 'misc/test3.dae')
-        self.gl.set_mesh(mesh)
+        # mesh = utils.deepsdf_to_mesh(model, latent_raw, eps, device, 'misc/test3.dae')
+        self.gl.set_mesh(self.interpolated_dict[0])
 
     def interpulation_press(self):
         """
@@ -136,6 +136,8 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
             Current step will be updated. 
         """
         # self.interpolate_press(True)
+        if self.curr_step >= len(self.interpolated_dict.keys()):
+            self.curr_step = 0
         self.gl.set_mesh(self.interpolated_dict[self.curr_step])
         self.curr_step = (self.curr_step + 1) % (self.nm_of_steps)
         _translate = QtCore.QCoreApplication.translate
@@ -146,6 +148,8 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
             Stores the value of number of interpolations once it changed
         """
         self.nm_of_steps = self.numStepsSpinbox.value()    
+        self.step_size = float(1/self.nm_of_steps)
+
 
     def save_interpolation_dict(self):
         demo_file = open("demo.pkl", "wb")
