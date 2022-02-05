@@ -29,7 +29,7 @@ class DeepSDFDataset(Dataset):
         self.latent_dict = tmp_latent
 
         # Read all the actual meshes that we sampled to RAM
-        self.meshes = [m for m in os.listdir(THINGI10K_OUT_DIR) if '.pkl' not in m][:2000]
+        self.meshes = [m for m in os.listdir(THINGI10K_OUT_DIR) if '.pkl' not in m][:NUM_MESHES]
         self.meshes_df = {}
         print("fetching all meshes to RAM. Warning: very expensive")
         def loop(mesh_name):
@@ -60,7 +60,8 @@ class DeepSDFDataset(Dataset):
         sample = {
             'xyz': torch.from_numpy(np.array([x,y,z])).float(),
             'sdf': torch.from_numpy(np.array([sdf])).float(),
-            'latent': torch.from_numpy(self.latent_dict[self.meshes[mesh_idx].split('.')[0]]).float()
+            'latent': torch.from_numpy(self.latent_dict[self.meshes[mesh_idx].split('.')[0]]).float(),
+            'idx': mesh_idx
         }
         
         return sample

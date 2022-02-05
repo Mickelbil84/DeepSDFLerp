@@ -15,12 +15,13 @@ from gui.mgl_qt_meshviewer import QGLControllerWidget
 
 import utils
 from data import *
-from model import DeepSDF
+from model import DeepSDF, LatentEmbedding
 
 import random
 
 # Setup CUDA if available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cpu')
 
 class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
     def __init__(self, parent=None):
@@ -54,7 +55,9 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
         
         # Load points from sampled file
         model = DeepSDF().to(device)
-        model.load_state_dict(torch.load('resources/trained_models/checkpoint_d0.05_e199_l2.pth', map_location=device))
+        model.load_state_dict(torch.load('checkpoints/checkpoint_e97.pth', map_location=device))
+        embedding = LatentEmbedding(NUM_MESHES).to(device)
+        embedding.load_state_dict(torch.load('checkpoints/checkpoint_e97_emb.pth', map_location=device))
         
         # Load latent_dict and mesh list to test stuff
         with open(os.path.join(THINGI10K_OUT_DIR, 'latent.pkl'), 'rb') as fp:
@@ -64,7 +67,7 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
             new_key = key.split('.')[0]
             tmp_latent[new_key] = latent_dict[key]
         latent_dict = tmp_latent
-        meshes = [m for m in os.listdir(THINGI10K_OUT_DIR) if '.pkl' not in m][:1000]
+        meshes = [m for m in os.listdir(THINGI10K_OUT_DIR) if '.pkl' not in m][:NUM_MESHES]
 
         # Access latent either via index in the mesh list
         # or directly with the mesh name string
@@ -88,17 +91,28 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
         eps = 0.05
 
         # Fetch latent vector
-        if latent_from_idx:
-            latent_raw = latent_dict[meshes[mesh_idx].split('.')[0]]
-            latent_raw2 = latent_dict[meshes[mesh_idx2].split('.')[0]]
-        else:
-            latent_raw = latent_dict[mesh_str]
-            latent_raw2 = latent_dict[mesh_str2]
+        # if latent_from_idx:
+        #     latent_raw = latent_dict[meshes[mesh_idx].split('.')[0]]
+        #     latent_raw2 = latent_dict[meshes[mesh_idx2].split('.')[0]]
+        # else:
+        #     latent_raw = latent_dict[mesh_str]
+        #     latent_raw2 = latent_dict[mesh_str2]
+
+        mesh_idx = 0
+        mesh_idx2 = 1
+
+        print(meshes[mesh_idx])
+        print(meshes[mesh_idx2])
+
+        print(torch.tensor(mesh_idx))
+        latent_raw = embedding(torch.tensor(mesh_idx).to(device)).detach().cpu()
+        latent_raw2 = embedding(torch.tensor(mesh_idx2).to(device)).detach().cpu()
 
         # Interpolate two meshes with linear interpolation. 
         # save all to a dictionary
         for ii in range(self.nm_of_steps):
-            self.alpha = round(float(self.alpha + self.step_size),1)
+            # self.alpha = round(float(self.alpha + self.step_size),1)
+            self.alpha = ii / self.nm_of_steps
             latent_raw_to_dict = self.alpha*latent_raw + (1-self.alpha)*latent_raw2
             mesh = utils.deepsdf_to_mesh(model, latent_raw_to_dict, eps, device, 'misc/test3.dae')
             self.interpolated_dict[ii] = mesh
@@ -123,7 +137,7 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
         """
         # self.interpolate_press(True)
         self.gl.set_mesh(self.interpolated_dict[self.curr_step])
-        self.curr_step = (self.curr_step + 1) % (self.nm_of_steps+1)
+        self.curr_step = (self.curr_step + 1) % (self.nm_of_steps)
         _translate = QtCore.QCoreApplication.translate
         self.currentStepLabel.setText(_translate("DeepSDFLerpGUI", "{}{}".format("Current step: ", self.curr_step)))
         
