@@ -6,6 +6,15 @@ import mcubes
 import trimesh
 import numpy as np
 
+import model
+import torch.nn as nn
+import torch.optim as optim
+import random
+import pickle
+import os
+import data
+import utils
+
 from constants import *
 
 
@@ -114,3 +123,55 @@ def add_noise_to_pts(sampled_pts, mu=0, sigma=5e-2, nm_of_samples=5000):
     for ii in range(sampled_pts.shape[1]):
         sampled_pts[:,ii] += np.random.normal(mu,sigma,nm_of_samples)
     return sampled_pts
+
+def mesh_to_deepSDF(out_collada_path=None):
+    """
+    Get a mesh, sample it and regenrate the latent vecotor
+    1. Load a mesh
+    2. Randomize a latent vector
+    3. Sample 10k points around the mesh
+    4. Compute the sdf and set to numpy array
+    5. Freeze all model's weights execpt the latent vector
+    6. Feed forward the latent vector.
+    7. Optimize on the sdf distance.
+    8. Compute loss and backprop to change the latent vector.
+    """
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    latent = np.random.normal(LATENT_MU, LATENT_SIGMA, LATENT_DIM)
+    latent = torch.from_numpy(latent).float().to(device)
+    # Init the nn and load weights
+    deepsdf = model.DeepSDF().to(device)
+    deepsdf.load_state_dict(torch.load('resources/trained_models/checkpoint_d0.05_e199_l2.pth', map_location=device))
+    # Freeze all weights
+    for param in deepsdf.parameters():
+        param.requires_grad = False
+    # Unfreeze the input
+    latent.requires_grad = True
+    # Some config:
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(deepsdf.parameters())
+    # Load mesh:
+            # Load latent_dict and mesh list to test stuff
+    with open(os.path.join(THINGI10K_OUT_DIR, 'latent.pkl'), 'rb') as fp:
+        latent_dict = pickle.load(fp)
+    tmp_latent = {}
+    for key in latent_dict:
+        new_key = key.split('.')[0]
+        tmp_latent[new_key] = latent_dict[key]
+    latent_dict = tmp_latent
+    meshes = [m for m in os.listdir(THINGI10K_OUT_DIR) if '.pkl' not in m][:1000]
+
+    latents_dict_keys = latent_dict.keys()
+    mesh_str = random.choice(list(latents_dict_keys))
+    latent_raw = latent_dict[mesh_str]
+    eps = 0.05
+    mesh = utils.deepsdf_to_mesh(model, latent_raw, eps, device, 'misc/test3.dae')
+    
+
+def main():
+    mesh_to_deepSDF()
+
+if __name__ == "__main__":
+    main()
+
+
