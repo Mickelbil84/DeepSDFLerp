@@ -54,6 +54,9 @@ def deepsdf_to_mesh(deepsdf, latent_z, eps, device, out_collada_path=None):
     if out_collada_path is not None:
         mcubes.export_mesh(vertices, triangles, out_collada_path)
     
+    if len(vertices) == 0 or len(triangles) == 0:
+        return None
+
     # Convert to trimesh mesh
     mesh = trimesh.Trimesh(vertices, triangles)
     normalize_mesh(mesh)

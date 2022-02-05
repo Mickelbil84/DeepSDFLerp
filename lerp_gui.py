@@ -112,7 +112,7 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
         # latent_raw3 = self.alpha*latent_raw + (1-self.alpha)*latent_raw2
 
         # Compute the mesh from SDF and output to screen
-        mesh = latent_raw_to_dict[0] #utils.deepsdf_to_mesh(model, latent_raw, eps, device, 'misc/test3.dae')
+        mesh = utils.deepsdf_to_mesh(model, latent_raw, eps, device, 'misc/test3.dae')
         self.gl.set_mesh(mesh)
 
     def interpulation_press(self):

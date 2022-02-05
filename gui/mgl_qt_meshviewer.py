@@ -69,6 +69,8 @@ class QGLControllerWidget(QtOpenGL.QGLWidget):
         self.scale = 1.0
 
     def set_mesh(self, mesh):
+        if mesh is None:
+            return
         self.mesh = mesh
         # self.mesh.update_normals()
         # assert(self.mesh.n_vertices() > 0 and self.mesh.n_faces() > 0)
