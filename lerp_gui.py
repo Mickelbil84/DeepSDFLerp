@@ -78,8 +78,8 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
         # Choose two random meshes for interpolation
         latents_dict_keys = latent_dict.keys()
         if self.choose_random_meshes:
-            mesh_str = random.choice(list(latents_dict_keys))
-            mesh_str2 = random.choice(list(latents_dict_keys))
+            mesh_str = random.choice(list(latents_dict_keys)[:99])
+            mesh_str2 = random.choice(list(latents_dict_keys)[:99])
         else:
             mesh_str = '101620'
             mesh_str2 = '101864'
