@@ -21,7 +21,7 @@ if __name__ == "__main__":
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def train(train_loader, embedding, model, criterion, optimizer, epoch, train_losses):
+def train(train_loader, embedding, model, criterion, optimizer, optimizer_embedding, epoch, train_losses):
     total_loss = 0
     cnt = 0
     train_enum = tqdm.tqdm(enumerate(train_loader), desc='Train epoch %d' % epoch)
@@ -39,13 +39,15 @@ def train(train_loader, embedding, model, criterion, optimizer, epoch, train_los
 
         # Perform a learning step
         model.zero_grad()
+        embedding.zero_grad()
         output = model(xyz, latent)
         loss_sdf = criterion(torch.clamp(output, -DELTA, DELTA), torch.clamp(sdf, -DELTA, DELTA))
-        # loss_z = criterion(latent, latent_zero) / (LATENT_SIGMA)
+        loss_z = criterion(latent, latent_zero) / (LATENT_SIGMA**2)
         # loss = loss_sdf + loss_z
         loss = loss_sdf
         loss.backward()
         optimizer.step()
+        optimizer_embedding.step()
 
         # Update losses and visualize
         total_loss += loss.item()
@@ -65,7 +67,7 @@ def main():
     # Load train data
     ###################
     train_dataset = data.DeepSDFDataset()
-    train_loader = DataLoader(train_dataset, batch_size=1024, num_workers=4, pin_memory=True, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=4096*4, num_workers=16, pin_memory=True, shuffle=True)
 
     ###############################
     # Prepare model and optimizers
@@ -73,14 +75,15 @@ def main():
     deepsdf = model.DeepSDF().to(device)
     embedding = model.LatentEmbedding(NUM_MESHES).to(device)
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(list(deepsdf.parameters()) + list(embedding.parameters()))
+    optimizer = optim.Adam(deepsdf.parameters(), lr=1e-5)
+    optimizer_embedding = optim.Adam(embedding.parameters(), lr=1e-3)
 
     ###############################
     # Start training
     ###############################
     train_losses = []
     for epoch in range(NUM_EPOCHS):
-        train(train_loader, embedding, deepsdf, criterion, optimizer, epoch, train_losses)
+        train(train_loader, embedding, deepsdf, criterion, optimizer, optimizer_embedding, epoch, train_losses)
         torch.save(deepsdf.state_dict(), 'checkpoints/checkpoint_e%d.pth' % epoch)
         torch.save(embedding.state_dict(), 'checkpoints/checkpoint_e%d_emb.pth' % epoch)
 

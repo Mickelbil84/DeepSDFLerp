@@ -55,9 +55,11 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
         
         # Load points from sampled file
         model = DeepSDF().to(device)
-        model.load_state_dict(torch.load('checkpoints/checkpoint_e97.pth', map_location=device))
-        embedding = LatentEmbedding(NUM_MESHES).to(device)
-        embedding.load_state_dict(torch.load('checkpoints/checkpoint_e97_emb.pth', map_location=device))
+        # model.load_state_dict(torch.load('resources/trained_models/embedding_on_100/checkpoint_e98.pth', map_location=device))
+        model.load_state_dict(torch.load('checkpoints/checkpoint_e199.pth', map_location=device))
+        embedding = LatentEmbedding(1000).to(device)
+        # embedding.load_state_dict(torch.load('resources/trained_models/embedding_on_100/checkpoint_e98_emb.pth', map_location=device))
+        embedding.load_state_dict(torch.load('checkpoints/checkpoint_e199_emb.pth', map_location=device))
         
         # Load latent_dict and mesh list to test stuff
         with open(os.path.join(THINGI10K_OUT_DIR, 'latent.pkl'), 'rb') as fp:
@@ -101,6 +103,9 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
         mesh_idx = 0
         mesh_idx2 = 1
 
+        for i, m in enumerate(meshes[:1000]):
+            print(i, '-', m.split('.')[0])
+
         print(meshes[mesh_idx])
         print(meshes[mesh_idx2])
 
@@ -110,7 +115,7 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
 
         # Interpolate two meshes with linear interpolation. 
         # save all to a dictionary
-        for ii in range(self.nm_of_steps):
+        for ii in range(self.nm_of_steps+1):
             # self.alpha = round(float(self.alpha + self.step_size),1)
             self.alpha = ii / self.nm_of_steps
             latent_raw_to_dict = self.alpha*latent_raw + (1-self.alpha)*latent_raw2
@@ -139,7 +144,7 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
         if self.curr_step >= len(self.interpolated_dict.keys()):
             self.curr_step = 0
         self.gl.set_mesh(self.interpolated_dict[self.curr_step])
-        self.curr_step = (self.curr_step + 1) % (self.nm_of_steps)
+        self.curr_step = (self.curr_step + 1) % (self.nm_of_steps+1)
         _translate = QtCore.QCoreApplication.translate
         self.currentStepLabel.setText(_translate("DeepSDFLerpGUI", "{}{}".format("Current step: ", self.curr_step)))
         
