@@ -173,14 +173,23 @@ def mesh_to_deepSDF(out_collada_path=None):
     8. Compute loss and backprop to change the latent vector.
     """
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    nm_of_samples = 20000
-    eps = 0.05
+    nm_of_samples = 50000
+    eps = 0.04
+    DELTA = 0.05
     load_recovered_mesh = True 
     # Randomize a latent vector z
     latent_z = np.random.normal(LATENT_MU, LATENT_SIGMA, LATENT_DIM)
     # Init the Neural Network and load the weights
     deepsdf = model.DeepSDF().to(device)
-    deepsdf.load_state_dict(torch.load('resources/trained_models/checkpoint_d0.05_e199_l2.pth', map_location=device))
+    deepsdf.load_state_dict(torch.load('checkpoints/checkpoint_e97.pth', map_location=device))
+
+    ## ==== Test === ## FIXME:Delete if not needed
+    embedding = model.LatentEmbedding(NUM_MESHES).to(device)
+    embedding.load_state_dict(torch.load('checkpoints/checkpoint_e97_emb.pth', map_location=device))
+    mesh_idx2 = 0
+    latent_raw2 = embedding(torch.tensor(mesh_idx2).to(device)).detach().cpu()
+
+
     # Freeze all weights
     for param in deepsdf.parameters():
         param.requires_grad_(True)
@@ -189,6 +198,7 @@ def mesh_to_deepSDF(out_collada_path=None):
     latent_raw = get_random_latent_vector_from_dict()
     # Render a mesh out of a trained latent vector
     if load_recovered_mesh:
+        latent_raw = latent_raw2 # FIXME 
         mesh = utils.deepsdf_to_mesh(deepsdf, latent_raw, eps, device)
         # Sample 10k random samples. 
         samples_df = generate_samples_for_loaded_mesh(mesh, num_samples=nm_of_samples)
@@ -215,16 +225,17 @@ def mesh_to_deepSDF(out_collada_path=None):
     criterion = nn.MSELoss()
     total_loss = 0
     cnt = 0
-    lr_n = 1e-2
-    for epoch in range(150*6):
-        if ((epoch%150) == 0):
+    lr_n = 1e-1
+    for epoch in range(400*6):
+        if ((epoch%400) == 0):
             lr_n = lr_n/10
-            print(lr_n)
-        optimizer = optim.Adam([latent_z], lr=lr_n)#1e-3)
+            print('=====>  Learning rate changed: {}'.format(lr_n))
+            # print(lr_n)
+        optimizer = optim.Adam([latent_z], lr=lr_n)
         latent = latent_z.repeat(nm_of_samples, 1)
         deepsdf.zero_grad()
         output = deepsdf(xyz, latent)
-        loss = criterion(torch.clamp(output, -0.05, 0.05), torch.clamp(sdf, -0.05, 0.05))
+        loss = criterion(torch.clamp(output, -DELTA, DELTA), torch.clamp(sdf, -DELTA, DELTA))
         loss.backward()
         optimizer.step()
         # Update losses and visualize
@@ -233,6 +244,8 @@ def mesh_to_deepSDF(out_collada_path=None):
         print('=====> Train set loss: {:.8f}\t Epoch: {}'.format(total_loss/cnt, epoch))
     print("Done")
     recovered_latent_vector = latent_z.detach().numpy()
+    # mesh = utils.deepsdf_to_mesh(deepsdf, torch.tensor(recovered_latent_vector), eps, device)
+    # mesh.show()
     return recovered_latent_vector
 
 def get_random_latent_vector_from_dict(const_str = "1663774"):
