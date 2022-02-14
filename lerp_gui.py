@@ -1,13 +1,8 @@
 import os
 import sys
-from numpy.lib.twodim_base import tri
-from torch._C import _set_graph_executor_optimize
-import tqdm
+import pickle
+
 import torch
-import mcubes
-import numpy as np
-import pandas as pd
-import trimesh
 from PyQt5 import QtCore, QtWidgets
 
 from gui.gui import Ui_DeepSDFLerpGUI
@@ -20,8 +15,8 @@ from model import DeepSDF, LatentEmbedding
 import random
 
 # Setup CUDA if available
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# device = torch.device('cpu')
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu')
 
 class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
     def __init__(self, parent=None):
