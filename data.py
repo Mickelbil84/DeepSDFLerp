@@ -1,6 +1,4 @@
 import os
-import pickle
-import multiprocessing
 
 import tqdm
 import torch
@@ -16,37 +14,31 @@ import utils
 
 class DeepSDFDataset(Dataset):
     """
-    Loads for every mesh its sampels and latent vector
+    Loads for every mesh its sampels, sdf and latent vector id
     """
-    def __init__(self):
-        # Load latent dict and remove extensions from mesh names
-        with open(os.path.join(THINGI10K_OUT_DIR, 'latent.pkl'), 'rb') as fp:
-            self.latent_dict = pickle.load(fp)
-        tmp_latent = {}
-        for key in self.latent_dict:
-            new_key = key.split('.')[0]
-            tmp_latent[new_key] = self.latent_dict[key]
-        self.latent_dict = tmp_latent
 
+    def __init__(self):
         # Read all the actual meshes that we sampled to RAM
-        self.meshes = [m for m in os.listdir(THINGI10K_OUT_DIR) if '.pkl' not in m][:NUM_MESHES]
+        # We limit the number of trained mesh to a given constant
+        self.meshes = [m for m in os.listdir(
+            THINGI10K_OUT_DIR) if '.pkl' not in m][:NUM_MESHES]
         self.meshes_df = {}
         print("fetching all meshes to RAM. Warning: very expensive")
+
         def loop(mesh_name):
             return mesh_name, pd.read_excel(os.path.join(THINGI10K_OUT_DIR, mesh_name))
-        pairs = Parallel(n_jobs=-1, verbose=10)(delayed(loop)(mesh_name) for mesh_name in self.meshes)
+        pairs = Parallel(n_jobs=-1, verbose=10)(delayed(loop)
+                                                (mesh_name) for mesh_name in self.meshes)
         for mesh_name, df in pairs:
             self.meshes_df[mesh_name] = df
-
 
     def __len__(self):
         return len(self.meshes) * NUM_SAMPLES
 
-
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
-        
+
         mesh_idx = idx // NUM_SAMPLES
         sample_idx = idx % NUM_SAMPLES
 
@@ -56,76 +48,50 @@ class DeepSDFDataset(Dataset):
         y = samples_df['y'][sample_idx]
         z = samples_df['z'][sample_idx]
         sdf = samples_df['sdf'][sample_idx]
- 
+
         sample = {
-            'xyz': torch.from_numpy(np.array([x,y,z])).float(),
+            'xyz': torch.from_numpy(np.array([x, y, z])).float(),
             'sdf': torch.from_numpy(np.array([sdf])).float(),
-            'latent': torch.from_numpy(self.latent_dict[self.meshes[mesh_idx].split('.')[0]]).float(),
             'idx': mesh_idx
         }
-        
+
         return sample
 
-def generate_samples_for_mesh(mesh_path, num_samples=NUM_SAMPLES, alpha=ALPHA, 
-    boundary_mu=BOUNDARY_MU, boundary_sigma=BOUNDARY_SIGMA, 
-    normal_mu=NORMAL_MU, normal_sigma=NORMAL_SIGMA):
+
+def generate_samples_for_mesh(mesh_path, num_samples=NUM_SAMPLES, alpha=ALPHA,
+                              boundary_mu=BOUNDARY_MU, boundary_sigma=BOUNDARY_SIGMA,
+                              normal_mu=NORMAL_MU, normal_sigma=NORMAL_SIGMA):
+    """
+    Given a mesh path (and all the needed parameters) - we sample enough samples in its neighborhood
+    and in normal distribution and compute their SDF.
+    Return all the samples (and their SDF) to a pandas DataFrame.
+    """
     # Load the mesh and normalize it
     mesh = trimesh.load(mesh_path)
-    utils.normalize_mesh(mesh)
-
-    if len(mesh.faces) > MAX_FACE_COUNT:
-        return None
-
-    # Sample points near the mesh and in normal distribution
-    num_mesh_samples = int(alpha * num_samples)
-    samples_near_mesh = utils.sample_random_points_near_mesh(
-        mesh, num_mesh_samples, mu=boundary_mu, sigma=boundary_sigma)
-    samples_normal = utils.sample_random_points(
-        num_samples - num_mesh_samples, mu=normal_mu, sigma=normal_sigma)
-    samples = np.concatenate([samples_near_mesh, samples_normal])
-
-    # Compute SDF
-    pq = trimesh.proximity.ProximityQuery(mesh)
-    sdf = pq.signed_distance(samples)
-    
-    # Generate pandas dataframe
-    df = pd.DataFrame({
-        'x': samples[:, 0],
-        'y': samples[:, 1],
-        'z': samples[:, 2],
-        'sdf': sdf
-    })
-
-    # Return the samples dataframe and the random latent vector
-    return df
+    return utils.generate_samples_for_loaded_mesh(mesh, num_samples, alpha, boundary_mu, boundary_sigma, normal_mu, normal_sigma)
 
 
 def process_mesh(in_dir, out_dir, mesh_name):
+    """
+    Wrap the logic for processing a mesh, i.e. loading and generating samples
+    (if we haven't already)
+    """
     mesh_name_pre, _ = mesh_name.split('.')
     if os.path.isfile(os.path.join(out_dir, mesh_name_pre + '.xlsx')):
         return
     try:
-        df =  generate_samples_for_mesh(os.path.join(in_dir, mesh_name))
+        df = generate_samples_for_mesh(os.path.join(in_dir, mesh_name))
     except:
         return
-    
+
     if df is not None:
         df.to_excel(os.path.join(out_dir, mesh_name_pre + '.xlsx'))
 
 
-def create_latent_space_dict(in_dir, latent_dim=LATENT_DIM, latent_mu=LATENT_MU, latent_sigma=LATENT_SIGMA):
-    meshes = os.listdir(in_dir)
-    d = {}
-    for mesh_name in meshes:
-        z = np.random.normal(latent_mu, latent_sigma, latent_dim)
-        d[mesh_name] = z
-    return d
-
-
 if __name__ == "__main__":
     """
-    The main function actually prepares the training data, from stl
-    to excel with SDF samples + latent vector mapping
+    The main function actually prepares the training data, 
+    from stl to excel with SDF samples 
     """
     in_dir = 'data/Thingi10K/raw_meshes'
     out_dir = 'data/sampled_sdf/Thingi10K'
@@ -133,7 +99,3 @@ if __name__ == "__main__":
 
     for mesh_name in tqdm.tqdm(meshes):
         process_mesh(in_dir, out_dir, mesh_name)
-
-    latent_dict = create_latent_space_dict(in_dir)
-    with open(os.path.join(out_dir, 'latent.pkl'), 'wb') as fp:
-        pickle.dump(latent_dict, fp)

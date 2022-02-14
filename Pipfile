@@ -1,0 +1,28 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[[source]]
+url = "https://download.pytorch.org/whl/cu113"
+verify_ssl = true
+name = "downloadpytorch"
+
+[packages]
+tqdm = "*"
+pymcubes = "*"
+pandas = "*"
+torch = {version = "*", index = "downloadpytorch"}
+scipy = "*"
+pyqt5 = "*"
+moderngl = "*"
+openmesh = "*"
+pyrr = "*"
+trimesh = "*"
+joblib = "*"
+visdom = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
