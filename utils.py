@@ -193,7 +193,7 @@ def mesh_to_deepSDF(out_collada_path=None):
     latent_raw = get_random_latent_vector_from_dict()
     # Render a mesh out of a trained latent vector
     if load_recovered_mesh:
-        latent_raw = latent_raw2 # FIXME 
+        # latent_raw = latent_raw2 # FIXME 
         mesh = utils.deepsdf_to_mesh(deepsdf, latent_raw, eps, device)
         # Sample 10k random samples.
         samples_df = generate_samples_for_loaded_mesh(
