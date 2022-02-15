@@ -163,7 +163,7 @@ def generate_samples_for_loaded_mesh(mesh, num_samples=NUM_SAMPLES, alpha=ALPHA,
     return df
 
 
-def mesh_to_deepSDF(out_collada_path=None):
+def mesh_to_deepSDF(mesh_path, nm_of_samples=80000, eps=0.05, lr_n=1e-2, epochs=150*12, lr_step=600):
     """
     Get a mesh, sample it and regenrate the latent vecotor
     1. Load a mesh
@@ -176,63 +176,47 @@ def mesh_to_deepSDF(out_collada_path=None):
     8. Compute loss and backprop to change the latent vector.
     """
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    nm_of_samples = 20000
-    eps = 0.05
-    load_recovered_mesh = True
-    # Randomize a latent vector z
-    latent_z = np.random.normal(LATENT_MU, LATENT_SIGMA, LATENT_DIM)
+
     # Init the Neural Network and load the weights
-    deepsdf = model.DeepSDF().to(device)
-    deepsdf.load_state_dict(torch.load(
-        'resources/trained_models/checkpoint_d0.05_e199_l2.pth', map_location=device))
+    deepsdf = model.DeepSDF()
+    deepsdf.load_state_dict(torch.load(CHECKPOINT_DEEPSDF))
+    deepsdf.to(device)
     # Freeze all weights
     for param in deepsdf.parameters():
         param.requires_grad_(True)
-    # Load mesh:
-    # Load latent_dict and mesh list to test a rendered mesh.
-    latent_raw = get_random_latent_vector_from_dict()
-    # Render a mesh out of a trained latent vector
-    if load_recovered_mesh:
-        mesh = utils.deepsdf_to_mesh(deepsdf, latent_raw, eps, device)
-        # Sample 10k random samples.
-        samples_df = generate_samples_for_loaded_mesh(
-            mesh, num_samples=nm_of_samples)
-    else:
-        in_dir = 'data/Thingi10K/raw_meshes'
-        meshes = os.listdir(in_dir)
-        mesh_name = meshes[random.choice(meshes)]
-        mesh_path = os.path.join(in_dir, mesh_name)
-        samples_df = data.generate_samples_mesh(
-            mesh_path, num_samples=nm_of_samples)
+    
+    # Randomize a latent vector z
+    latent_z = np.random.normal(LATENT_MU, LATENT_SIGMA, LATENT_DIM)
+
+    # Load the mesh and generate samples
+    print("Starting sampling...")
+    samples_df = data.generate_samples_for_mesh(mesh_path, nm_of_samples)
+    print("Sampling complete...")
+
     # xyz and sdf vectors
     xyz = torch.from_numpy(
-        np.array([samples_df['x'], samples_df['y'], samples_df['z']])).float()
+        np.array([samples_df['x'], samples_df['y'], samples_df['z']])).float().to(device)
     xyz = torch.transpose(xyz, 1, 0)
-    sdf = torch.from_numpy(np.array([samples_df['sdf']])).float()
+    sdf = torch.from_numpy(np.array([samples_df['sdf']])).float().to(device)
     sdf = torch.transpose(sdf, 1, 0)
-    # move to device
-    xyz.to(device)
-    sdf.to(device)
     latent_z = torch.from_numpy(latent_z).float().to(device)
 
-    # train
+    # ... Train ...
     # Transform the latent to a batch of duplicated latents
     latent_z.requires_grad_(True)
     xyz.requires_grad_(False)
     criterion = nn.MSELoss()
     total_loss = 0
     cnt = 0
-    lr_n = 1e-2
-    for epoch in range(150*6):
-        if ((epoch % 150) == 0):
+    for epoch in range(epochs):
+        if (epoch % lr_step) == 0:
             lr_n = lr_n/10
-            print(lr_n)
-        optimizer = optim.Adam([latent_z], lr=lr_n)  # 1e-3)
+        optimizer = optim.Adam([latent_z], lr=lr_n)
         latent = latent_z.repeat(nm_of_samples, 1)
         deepsdf.zero_grad()
         output = deepsdf(xyz, latent)
-        loss = criterion(torch.clamp(output, -0.05, 0.05),
-                         torch.clamp(sdf, -0.05, 0.05))
+        loss = criterion(torch.clamp(output, -DELTA, DELTA),
+                         torch.clamp(sdf, -DELTA, DELTA))
         loss.backward()
         optimizer.step()
         # Update losses and visualize
@@ -240,8 +224,8 @@ def mesh_to_deepSDF(out_collada_path=None):
         cnt += 1
         print('=====> Train set loss: {:.8f}\t Epoch: {}'.format(
             total_loss/cnt, epoch))
-    print("Done")
-    recovered_latent_vector = latent_z.detach().numpy()
+    print("Done...")
+    recovered_latent_vector = latent_z.detach().cpu()
     return recovered_latent_vector
 
 

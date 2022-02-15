@@ -21,6 +21,7 @@ pyrr = "*"
 trimesh = "*"
 joblib = "*"
 visdom = "*"
+rtree = "*"
 
 [dev-packages]
 

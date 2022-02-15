@@ -15,15 +15,6 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 OUT_DIR = './misc/latent_arithmetic'
 
-MESHES = {
-    "BOTTLE_CAP_TRIPOD": 0,
-    "ICE_CREAM": 1,
-    "LEGO": 99,
-    "BIG_BOY_LOCOMOTIVE": 137,
-    "PONYTROPE": 320,
-    "LYMAN_FILLAMENT_EXTRUDER": 402,
-}
-
 # Tuples of (a,b,c) where we compute a-b+c
 ARITHMETIC = [
     ("LEGO", "BOTTLE_CAP_TRIPOD", "ICE_CREAM")

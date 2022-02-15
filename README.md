@@ -44,6 +44,9 @@ the GUI that allows us to interpolate between meshes - found in `lerp_gui.py`, a
 found in `latent_arithmetic.py`.
 The widget for displaying the 3D mesh was taken from: https://github.com/zishun/pyqt-meshviewer
 
+The model was trained on both 100 and 1000 meshes. The result for 100 meshes is more visually appealing (in our opinion), and is the one
+chosen by default. In order to use the 1000 mesh version, set the flag `SMALLER_MODEL` in `constants.py` to False.
+
 # Running DeepSDFLerp
 
 To run the application Lerp GUI, run:

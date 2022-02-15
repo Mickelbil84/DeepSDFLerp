@@ -10,7 +10,6 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-
 class Ui_DeepSDFLerpGUI(object):
     def setupUi(self, DeepSDFLerpGUI):
         DeepSDFLerpGUI.setObjectName("DeepSDFLerpGUI")
@@ -136,7 +135,7 @@ class Ui_DeepSDFLerpGUI(object):
         self.lerpButton = QtWidgets.QPushButton(self.groupBox_4)
         self.lerpButton.setObjectName("lerpButton")
         self.verticalLayout_6.addWidget(self.lerpButton)
-        self.label_4 = QtWidgets.QPushButton(self.groupBox_4)
+        self.label_4 = QtWidgets.QLabel(self.groupBox_4)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)

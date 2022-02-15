@@ -1,5 +1,9 @@
 0 - 97734 - bottle cap tripod
 1 - 57311 - ice cream
+2 - 130449 - vw bus
+15 - 53449 - buldozer
+49 - 1489600 - hive
+73 - 439143 - hurricane lamp
 99 - 44633 - lego
 137 - 472004 - big boy locomotive
 320 - 940043 - ponytrope
