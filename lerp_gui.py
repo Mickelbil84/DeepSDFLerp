@@ -222,7 +222,7 @@ class DeepSDFLerpGUI(QtWidgets.QMainWindow, Ui_DeepSDFLerpGUI):
             return utils.mesh_to_deepSDF(file_path)
         else:
             embedding = LatentEmbedding(NUM_MESHES)
-            embedding.load_state_dict(torch.load(CHECKPOINT_EMBEDDING))
+            embedding.load_state_dict(torch.load(CHECKPOINT_EMBEDDING, map_location=device))
             return embedding(torch.tensor(MESHES[list_item])).detach()
 
     def get_num_steps(self):
