@@ -163,7 +163,10 @@ def generate_samples_for_loaded_mesh(mesh, num_samples=NUM_SAMPLES, alpha=ALPHA,
     return df
 
 
-def mesh_to_deepSDF(mesh_path, nm_of_samples=80000, eps=0.05, lr_n=1e-2, epochs=150*12, lr_step=600):
+# def mesh_to_deepSDF(mesh_path, nm_of_samples=80000, eps=0.05, lr_n=1e-2, epochs=150*12, lr_step=600):
+# def mesh_to_deepSDF(mesh_path, nm_of_samples=30000, eps=0.05, lr_n=5e-2, epochs=150*5, lr_step=150):
+def mesh_to_deepSDF(mesh_path, nm_of_samples=30000, eps=0.05, lr_n=5e-1, epochs=150*12, lr_step=450):
+
     """
     Get a mesh, sample it and regenrate the latent vecotor
     1. Load a mesh
@@ -178,9 +181,9 @@ def mesh_to_deepSDF(mesh_path, nm_of_samples=80000, eps=0.05, lr_n=1e-2, epochs=
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Init the Neural Network and load the weights
-    deepsdf = model.DeepSDF()
-    deepsdf.load_state_dict(torch.load(CHECKPOINT_DEEPSDF))
-    deepsdf.to(device)
+    deepsdf = model.DeepSDF().to(device)
+    deepsdf.load_state_dict(torch.load(CHECKPOINT_DEEPSDF, map_location=device))
+
     # Freeze all weights
     for param in deepsdf.parameters():
         param.requires_grad_(True)
@@ -205,13 +208,18 @@ def mesh_to_deepSDF(mesh_path, nm_of_samples=80000, eps=0.05, lr_n=1e-2, epochs=
     # Transform the latent to a batch of duplicated latents
     latent_z.requires_grad_(True)
     xyz.requires_grad_(False)
-    criterion = nn.MSELoss()
+    # criterion = nn.MSELoss() #nn.L1Loss #
+    criterion = nn.SmoothL1Loss() #L1Loss() #nn.L1Loss #
     total_loss = 0
     cnt = 0
+    optimizer = optim.Adam([latent_z], lr=lr_n)
+
     for epoch in range(epochs):
         if (epoch % lr_step) == 0:
             lr_n = lr_n/10
-        optimizer = optim.Adam([latent_z], lr=lr_n)
+            print('=====> Learning Rate decreased to: {}'.format(lr_n))
+        deepsdf.eval()
+        optimizer.zero_grad()
         latent = latent_z.repeat(nm_of_samples, 1)
         deepsdf.zero_grad()
         output = deepsdf(xyz, latent)
